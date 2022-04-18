@@ -14,3 +14,26 @@ Once the contract is deployed:
 - once auction is ended owner can call ```endingAuction()``` to end the auction and transfer the NFT to the winning bidder
 - owner can call ```withdrawFund()``` once auction is ended
 
+# Installation
+
+## Requirements
+
+- [Foundry](https://github.com/foundry-rs/foundry) installed 
+- Clone the repo
+- Create a .env file containing the following 
+
+```
+export private_key=
+export rpc_url=
+export etherscan=
+```
+
+## Set up
+
+Edit the config.sh with the desired inputs
+
+You can run ```forge test```
+
+To deploy and verify the contract run ```make all```
+
+
