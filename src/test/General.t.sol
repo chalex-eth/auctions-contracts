@@ -2,12 +2,10 @@
 pragma solidity 0.8.12;
 
 import "forge-std/Test.sol";
-import "../NFT.sol";
-import "../Auction.sol";
+import "../NFT_Auction.sol";
 
 contract Auction_Test is Test {
-    NFT nft;
-    Auction auction;
+    NFT_Auction auction;
 
     address admin = address(0x1337);
     address bidder1 = address(0x133702);
@@ -23,16 +21,22 @@ contract Auction_Test is Test {
         vm.label(bidder4, "Bidder4");
 
         vm.startPrank(admin);
-        auction = new Auction(86400, 1 ether, 1 ether / 10); // Create an auction for 24h with a 1 ether starting bid price and 0.1 bid increment
         string memory tokenURI = " ";
-        nft = new NFT("My NFT", "NFT", address(auction), tokenURI);
+        auction = new NFT_Auction(
+            86400,
+            1 ether,
+            1 ether / 10,
+            "My NFT",
+            "NFT",
+            tokenURI
+        ); // Create an auction for 24h with a 1 ether starting bid price and 0.1 bid increment
         vm.stopPrank();
     }
 
     function test_FullAuction() public {
         vm.warp(100);
         vm.prank(admin);
-        auction.startingAuction(address(nft));
+        auction.startingAuction();
         assertEq(auction.startAuction(), 100);
         assertEq(auction.endAuction(), 86500);
 
@@ -67,7 +71,7 @@ contract Auction_Test is Test {
         vm.warp(86501);
         vm.prank(admin);
         auction.endingAuction();
-        assertEq(nft.ownerOf(1), bidder4);
+        assertEq(auction.ownerOf(1), bidder4);
 
         vm.prank(admin);
         auction.withdrawFund();

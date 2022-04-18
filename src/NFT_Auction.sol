@@ -1,12 +1,12 @@
 //SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.12;
 
-import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-contract Auction is ERC721Holder, ReentrancyGuard {
+contract NFT_Auction is ERC721URIStorage, ReentrancyGuard {
     enum AUCTION_STATE {
         OPEN,
         CLOSED
@@ -15,6 +15,8 @@ contract Auction is ERC721Holder, ReentrancyGuard {
     /// ------------------------------------------------------
     /// Storage var
     /// ------------------------------------------------------
+
+    uint256 private constant _tokenId = 1;
 
     address public owner;
 
@@ -32,9 +34,6 @@ contract Auction is ERC721Holder, ReentrancyGuard {
 
     ///@notice Track when someone made a bid
     bool private isBidded = false;
-
-    ///@notice NFT address
-    address public NFTaddress;
 
     ///@notice State of the auction
     AUCTION_STATE private auctionState = AUCTION_STATE.CLOSED;
@@ -76,12 +75,17 @@ contract Auction is ERC721Holder, ReentrancyGuard {
     constructor(
         uint256 AUCTION_DURATION_,
         uint256 MIN_PRICE_,
-        uint256 MIN_BID_
-    ) {
+        uint256 MIN_BID_,
+        string memory name,
+        string memory symbol,
+        string memory _tokenURI
+    ) ERC721(name, symbol) {
         AUCTION_DURATION = AUCTION_DURATION_;
         MIN_PRICE = MIN_PRICE_;
         MIN_BID = MIN_BID_;
         owner = msg.sender;
+        _safeMint(address(this), _tokenId);
+        _setTokenURI(_tokenId, _tokenURI);
     }
 
     modifier onlyOwner() {
@@ -95,14 +99,13 @@ contract Auction is ERC721Holder, ReentrancyGuard {
     /// Admin action
     /// ------------------------------------------------------
 
-    function startingAuction(address _NFTaddress) external onlyOwner {
+    function startingAuction() external onlyOwner {
         if (auctionState != AUCTION_STATE.CLOSED) {
             revert Error_AuctionNotClosed();
         }
         auctionState = AUCTION_STATE.OPEN;
         startAuction = block.timestamp;
         endAuction = startAuction + AUCTION_DURATION;
-        NFTaddress = _NFTaddress;
         emit LaunchAuction(startAuction, endAuction);
     }
 
@@ -110,8 +113,7 @@ contract Auction is ERC721Holder, ReentrancyGuard {
         if (block.timestamp < endAuction) {
             revert Error_AuctionNotEnded();
         }
-        IERC721(NFTaddress).approve(bidder, 1);
-        IERC721(NFTaddress).safeTransferFrom(address(this), bidder, 1);
+        _transfer(address(this), bidder, 1);
     }
 
     function withdrawFund() external onlyOwner {

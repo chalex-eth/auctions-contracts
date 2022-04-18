@@ -2,12 +2,10 @@
 pragma solidity 0.8.12;
 
 import "forge-std/Test.sol";
-import "../NFT.sol";
-import "../Auction.sol";
+import "../NFT_Auction.sol";
 
 contract Auction_Test is Test {
-    NFT nft;
-    Auction auction;
+    NFT_Auction auction;
 
     address alice = address(0x1337);
     address bob = address(0x133702);
@@ -17,9 +15,15 @@ contract Auction_Test is Test {
         vm.label(bob, "Bob");
 
         vm.startPrank(alice);
-        auction = new Auction(86400, 1 ether, 1 ether / 10); // Create an auction for 24h with a 1 ether starting bid price and 0.1 bid increment
         string memory tokenURI = " ";
-        nft = new NFT("My NFT", "NFT", address(auction), tokenURI);
+        auction = new NFT_Auction(
+            86400,
+            1 ether,
+            1 ether / 10,
+            "My NFT",
+            "NFT",
+            tokenURI
+        ); // Create an auction for 24h with a 1 ether starting bid price and 0.1 bid increment
         vm.stopPrank();
     }
 
@@ -27,6 +31,10 @@ contract Auction_Test is Test {
         assertEq(auction.AUCTION_DURATION(), 86400);
         assertEq(auction.MIN_PRICE(), 1 ether);
         assertEq(auction.MIN_BID(), 1 ether / 10);
+        assertEq(auction.ownerOf(1), address(auction));
+        assertEq(auction.tokenURI(1), " ");
+        assertEq(auction.name(), "My NFT");
+        assertEq(auction.symbol(), "NFT");
     }
 
     ///-------------------------
@@ -35,9 +43,9 @@ contract Auction_Test is Test {
 
     ///@notice Test onlyOwner can start
     function testFuzz_OwnerStartingAuction(address randomSender) public {
-        vm.expectRevert(Auction.Error_CallerNotOwner.selector);
+        vm.expectRevert(NFT_Auction.Error_CallerNotOwner.selector);
         vm.prank(randomSender);
-        auction.startingAuction(address(nft));
+        auction.startingAuction();
     }
 
     ///@notice Check if init parameter are ok
@@ -45,10 +53,9 @@ contract Auction_Test is Test {
         vm.assume(timestamp < 1679899651); // Assume a timestamp prior to 2023
         vm.prank(alice);
         vm.warp(timestamp);
-        auction.startingAuction(address(nft));
+        auction.startingAuction();
         assertEq(auction.startAuction(), timestamp);
         assertEq(auction.endAuction(), timestamp + 86400);
-        assertEq(auction.NFTaddress(), address(nft));
     }
 
     ///-------------------------
@@ -57,7 +64,7 @@ contract Auction_Test is Test {
 
     ////@notice Test onlyOwner can end auction
     function testFuzz_OwnerEndingAuction(address randomSender) public {
-        vm.expectRevert(Auction.Error_CallerNotOwner.selector);
+        vm.expectRevert(NFT_Auction.Error_CallerNotOwner.selector);
         vm.prank(randomSender);
         auction.endingAuction();
     }
@@ -71,9 +78,9 @@ contract Auction_Test is Test {
         vm.assume(timetravel < 86400);
         vm.startPrank(alice);
         vm.warp(timestamp);
-        auction.startingAuction(address(nft));
+        auction.startingAuction();
         vm.warp(timestamp + timetravel);
-        vm.expectRevert(Auction.Error_AuctionNotEnded.selector);
+        vm.expectRevert(NFT_Auction.Error_AuctionNotEnded.selector);
         auction.endingAuction();
         vm.stopPrank();
     }
@@ -82,13 +89,14 @@ contract Auction_Test is Test {
     function test_transferNFT() public {
         vm.deal(bob, 10 ether);
         vm.prank(alice);
-        auction.startingAuction(address(nft));
+        auction.startingAuction();
         vm.prank(bob);
         auction.setBid{value: 1 ether}();
         vm.warp(86401);
         vm.prank(alice);
         auction.endingAuction();
-        assertEq(nft.ownerOf(1), bob);
+        console.log(auction.bidder());
+        assertEq(auction.ownerOf(1), bob);
         assertEq(auction.bidder(), bob);
         assertEq(auction.bidPrice(), 1 ether);
     }
@@ -99,16 +107,16 @@ contract Auction_Test is Test {
 
     function test_RevertAuctionNotOpen() public {
         vm.deal(bob, 10 ether);
-        vm.expectRevert(Auction.Error_AuctionNotOpen.selector);
+        vm.expectRevert(NFT_Auction.Error_AuctionNotOpen.selector);
         auction.setBid{value: 5 ether}();
     }
 
     function test_RevertAuctionClosed() public {
         vm.deal(bob, 10 ether);
         vm.prank(alice);
-        auction.startingAuction(address(nft));
+        auction.startingAuction();
         vm.warp(86401);
-        vm.expectRevert(Auction.Error_AuctionDeadlineEnded.selector);
+        vm.expectRevert(NFT_Auction.Error_AuctionDeadlineEnded.selector);
         auction.setBid{value: 5 ether}();
     }
 
@@ -117,9 +125,9 @@ contract Auction_Test is Test {
         vm.assume(amount < 1 * (10**18));
         vm.deal(bob, amount);
         vm.prank(alice);
-        auction.startingAuction(address(nft));
+        auction.startingAuction();
         vm.startPrank(bob);
-        vm.expectRevert(Auction.Error_BidTooLow.selector);
+        vm.expectRevert(NFT_Auction.Error_BidTooLow.selector);
         auction.setBid{value: amount}();
     }
 
@@ -127,7 +135,7 @@ contract Auction_Test is Test {
         vm.assume(amount >= 1 * (10**18));
         vm.deal(bidder, amount);
         vm.prank(alice);
-        auction.startingAuction(address(nft));
+        auction.startingAuction();
         vm.startPrank(bidder);
         auction.setBid{value: amount}();
         assertEq(amount, auction.bidPrice());
@@ -137,7 +145,7 @@ contract Auction_Test is Test {
     function test_FirstAuction() public {
         vm.deal(bob, 6 ether);
         vm.prank(alice);
-        auction.startingAuction(address(nft));
+        auction.startingAuction();
         vm.startPrank(bob);
         auction.setBid{value: 1 ether}();
         assertEq(1 ether, auction.bidPrice());
@@ -150,7 +158,7 @@ contract Auction_Test is Test {
         vm.deal(bob, bid1);
         vm.deal(alice, bid2);
         vm.prank(alice);
-        auction.startingAuction(address(nft));
+        auction.startingAuction();
         vm.prank(bob);
         auction.setBid{value: bid1}();
         assertEq(bid1, auction.bidPrice());
