@@ -37,3 +37,8 @@ You can run ```forge test```
 To deploy and verify the contract run ```make all```
 
 
+# Disclaimer
+
+Do not use this contract in production mode, when an user call the setBid() function, there is a refund process for the previous bidder. 
+This method is subject to DoS attack, you need to implement a pull over refund instead of push refund.
+[Consensys best practice](https://consensys.github.io/smart-contract-best-practices/development-recommendations/general/external-calls/)

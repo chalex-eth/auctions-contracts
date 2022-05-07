@@ -95,7 +95,6 @@ contract Auction_Test is Test {
         vm.warp(86401);
         vm.prank(alice);
         auction.endingAuction();
-        console.log(auction.bidder());
         assertEq(auction.ownerOf(1), bob);
         assertEq(auction.bidder(), bob);
         assertEq(auction.bidPrice(), 1 ether);
